@@ -2,3 +2,4 @@ pyspark==3.5.0
 kafka-python
 boto3
 faker
+psycopg2-binary

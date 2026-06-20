@@ -27,6 +27,8 @@ df = spark.readStream \
     .format("kafka") \
     .option("kafka.bootstrap.servers", "localhost:9092") \
     .option("subscribe", "banking_transactions") \
+    .option("startingOffsets", "latest") \
+    .option("failOnDataLoss", "false") \
     .load()
 
 # Convert value from binary to string and parse JSON
