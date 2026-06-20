@@ -16,6 +16,8 @@ schema = StructType([
     StructField("merchant", StringType()),
     StructField("amount", DoubleType()),
     StructField("city", StringType()),
+    StructField("risk_rating", StringType()),
+    StructField("device_id", StringType()),
     StructField("channel", StringType()),
     StructField("event_timestamp", StringType())
 ])

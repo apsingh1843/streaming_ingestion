@@ -24,6 +24,8 @@ def generate_transaction():
         'merchant': random.choice(['Amazon', 'Flipkart', 'Snapdeal', 'Myntra', 'BigBasket', 'Zomato', 'Swiggy']),
         'amount': round(random.uniform(10, 200000), 2),
         'city': random.choice(['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow']),
+        'risk_rating': random.choice(['LOW', 'MEDIUM', 'HIGH']),
+        'device_id': f'DVC{random.randint(100000, 999999)}',
         'channel': random.choice(['MOBILE', 'WEB', 'POS', 'ATM']),
         'event_timestamp': datetime.now().isoformat()
     }
