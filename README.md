@@ -155,6 +155,124 @@ s3://banking-data-ap-south-1/
 
 ---
 
+# Getting Started
+
+## Prerequisites
+
+Install the following:
+
+* Python 3.11+
+* Java 17
+* Apache Spark 3.5+
+* Docker Desktop
+* AWS CLI
+
+Verify installations:
+
+```bash
+python --version
+java -version
+spark-submit --version
+docker --version
+aws --version
+```
+
+---
+
+## Configure AWS
+
+```bash
+aws configure
+```
+
+Verify:
+
+```bash
+aws sts get-caller-identity
+```
+
+---
+
+## Clone Repository
+
+```bash
+git clone https://github.com/apsingh1843/streaming_ingestion.git
+
+cd streaming_ingestion
+```
+
+---
+
+## Make Scripts Executable
+
+```bash
+chmod +x scripts/start_env.sh
+chmod +x scripts/bootstrap.sh
+```
+
+---
+
+## Create Virtual Environment
+
+```bash
+python -m venv .venv
+
+source .venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+---
+
+## Start Project
+
+Activate environment:
+
+```bash
+source scripts/start_env.sh
+```
+
+Bootstrap infrastructure:
+
+```bash
+./scripts/bootstrap.sh
+```
+
+This will:
+
+* Start Kafka, Zookeeper, PostgreSQL and pgAdmin
+* Create Kafka topics
+* Create metadata tables
+* Seed initial pipeline metadata
+
+## Docker Commands
+
+Start services:
+
+```bash
+docker compose up -d
+```
+
+Verify:
+
+```bash
+docker ps
+```
+
+Stop services:
+
+```bash
+docker compose down
+```
+
+Remove volumes:
+
+```bash
+docker compose down -v
+```
+
+---
+
 # Components Implemented
 
 ## 1. Kafka Producers
@@ -460,68 +578,6 @@ Update Watermark
 | ----------- | ----------- | ------ | ----------- | ---------- |
 | 1           | CUST1001    | Mumbai | LOW         | FALSE      |
 | 2           | CUST1001    | Pune   | MEDIUM      | TRUE       |
-
----
-
-# Setup Instructions
-
-## Create Virtual Environment
-
-```bash
-python3 -m venv .venv
-
-source scripts/start_env.sh
-```
-
----
-
-## Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-## Configure AWS
-
-```bash
-aws configure
-```
-
-Verify:
-
-```bash
-aws s3 ls
-```
-
----
-
-# Docker Commands
-
-Start services:
-
-```bash
-docker compose up -d
-```
-
-Verify:
-
-```bash
-docker ps
-```
-
-Stop services:
-
-```bash
-docker compose down
-```
-
-Remove volumes:
-
-```bash
-docker compose down -v
-```
 
 ---
 
