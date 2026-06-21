@@ -1,90 +1,95 @@
-# Real-Time Banking Transaction Processing Platform
+# Real-Time Banking Data Platform
+Version 1.1
 
 ## Overview
 
-This project simulates a real-world banking transaction processing platform using modern Data Engineering technologies.
+This project simulates a production-style banking data platform using modern Data Engineering technologies.
 
-The platform ingests streaming transaction data from Kafka, processes it using PySpark Structured Streaming, stores raw data in AWS S3 (Bronze Layer), performs data quality validations and incremental processing into a Silver Layer, and tracks pipeline metadata using PostgreSQL.
+The platform ingests customer and transaction events through Kafka, processes them using PySpark Structured Streaming, stores data in an AWS S3-based data lake (Bronze/Silver architecture), and loads curated customer data into a PostgreSQL warehouse using Slowly Changing Dimension (SCD Type 2) processing.
 
-## Tech Stack
+The project demonstrates:
 
-* Python
-* Apache Kafka
-* Apache Spark (PySpark Structured Streaming)
-* AWS S3
-* PostgreSQL
-* Docker & Docker Compose
-* AWS CLI
-* Git/GitHub
+* Real-time streaming ingestion
+* Incremental data processing
+* Data lake architecture
+* Data warehousing
+* SCD Type 2 implementation
+* Data quality validation
+* Metadata-driven ETL
+* Pipeline observability and audit logging
 
 ---
 
 # Architecture
 
 ```text
-Transaction Producer
-        ↓
-      Kafka
-        ↓
-PySpark Structured Streaming
-        ↓
- AWS S3 Bronze Layer
+                    +--------------------+
+                    | Kafka Producers    |
+                    +--------------------+
+                              |
+        +---------------------------------------------+
+        |                                             |
+        v                                             v
 
-        ↓
+banking_transactions topic                 customer_updates topic
+        |                                             |
+        v                                             v
 
-PySpark Batch Processing
-(Bronze → Silver)
+Transaction Streaming Job               Customer Streaming Job
+(PySpark Structured Streaming)          (PySpark Structured Streaming)
 
-        ↓
+        |                                             |
+        +------------------+--------------------------+
+                           |
+                           v
 
-AWS S3 Silver Layer
+                    AWS S3 Bronze Layer
 
-        ↓
+                           |
+                           v
 
-PostgreSQL
- ├── pipeline_metadata
- └── pipeline_run_history
+                Bronze → Silver Processing
+                    (Incremental ETL)
+
+                           |
+                           v
+
+                    AWS S3 Silver Layer
+
+                           |
+                           v
+
+                 Customer SCD Type 2 Job
+
+                           |
+                           v
+
+                  PostgreSQL Warehouse
+
+                           |
+                           v
+
+                 customer_dimension
 ```
 
 ---
 
-# Current Features
+# Technology Stack
 
-### Streaming Ingestion
-
-* Kafka-based transaction ingestion
-* Real-time banking transaction generation
-* PySpark Structured Streaming consumer
-* S3 Bronze Layer storage
-
-### Data Lake
-
-* Bronze Layer
-* Silver Layer
-* Partitioned Parquet storage
-
-### Data Quality
-
-* Null checks
-* Amount validation
-* Record deduplication
-
-### Incremental Processing
-
-* Watermark-based processing
-* Only new records are processed
-* Metadata-driven ETL
-
-### Monitoring & Audit
-
-* Pipeline metadata tracking
-* Run history logging
-* Records read/written tracking
-* Rejected records tracking
+| Component         | Technology             |
+| ----------------- | ---------------------- |
+| Programming       | Python                 |
+| Streaming         | Apache Kafka           |
+| Processing        | Apache Spark (PySpark) |
+| Storage           | AWS S3                 |
+| Warehouse         | PostgreSQL             |
+| Containerization  | Docker                 |
+| Metadata Tracking | PostgreSQL             |
+| Version Control   | Git / GitHub           |
 
 ---
 
-# Repository Structure
+# Project Structure
 
 ```text
 streaming_ingestion/
@@ -95,59 +100,390 @@ streaming_ingestion/
 ├── src/
 │
 │   ├── producer/
-│   │   └── banking_tran_producer.py
+│   │   ├── banking_trans_producer.py
+│   │   └── customer_update_producer.py
 │   │
 │   ├── streaming/
-│   │   └── banking_trans_streaming.py
+│   │   ├── banking_trans_streaming.py
+│   │   └── customer_update_streaming.py
 │   │
 │   ├── batch/
-│   │   └── bronze_to_silver.py
-│   |
-|   ├── sql/
-│       └── postgres_ddl.sql
-│
-├── docs/
+│   │   ├── trans_bronze_to_silver.py
+│   │   └── cust_bronze_to_silver.py
+│   │   └── cust_silver_to_wh.py
+│   │
+│   ├── sql/
+│   │   └── cust_etl/
+│   │   │    ├── create_customer_dim_data.sql
+│   │   │    ├── create_customer_staging.sql
+│   │   │    ├── create_customer_changes.sql
+│   │   │    ├── load_customer_changes.sql
+│   │   │    ├── insert_new_customers.sql
+│   │   │    ├── expire_existing_customers.sql
+│   │   │    └── insert_new_versions.sql
+│   │   └── postgres_ddl.sql
+│   │
+│   └── utils/
+│       ├── postgres_utils.py
 │
 ├── requirements.txt
-│
-└── README.md
+├── README.md
+└── .gitignore
 ```
 
 ---
 
-# AWS Setup
+# Data Lake Layout
 
-## Create S3 Bucket
+```text
+s3://banking-data-ap-south-1/
+
+├── bronze/
+│   ├── transactions/
+│   └── customers/
+│
+├── silver/
+│   ├── transactions/
+│   └── customers/
+│
+├── checkpoints/
+│
+├── quarantine/
+│
+└── gold/
+```
+
+---
+
+# Components Implemented
+
+## 1. Kafka Producers
+
+### Banking Transaction Producer
+
+Generates synthetic transaction events:
+
+```json
+{
+  "transaction_id": "a554ab69-1307-4003-8417-b335ac149406",
+  "customer_id":"CUST7969",
+  "account_id":"ACC33061",
+  "transaction_type":"ATM",
+  "merchant":"Amazon",
+  "amount":112106.97,
+  "city":"Lucknow",
+  "channel":null,
+  "event_timestamp":"2026-06-20T17:03:37.863399"
+}
+```
+
+---
+
+### Customer Update Producer
+
+Generates customer profile updates:
+
+```json
+{
+  "customer_id": "CUST1001",
+  "customer_name": "Rahul Sharma",
+  "email": "rahul@gmail.com",
+  "phone": "9999999999",
+  "city": "Mumbai",
+  "risk_rating": "LOW",
+  "update_timestamp": "2026-06-21T10:00:00"
+}
+```
+
+---
+
+# 2. Streaming Layer
+
+Implemented using PySpark Structured Streaming.
+
+## Transaction Stream
+
+Kafka → Bronze Transactions
+
+Responsibilities:
+
+* Read Kafka messages
+* Parse JSON
+* Validate schema
+* Add ingestion metadata
+* Write Parquet files to S3 Bronze
+
+---
+
+## Customer Stream
+
+Kafka → Bronze Customers
+
+Responsibilities:
+
+* Read customer updates
+* Parse JSON
+* Add ingestion timestamp
+* Partition data by date
+* Store in Bronze Layer
+
+---
+
+# 3. Bronze → Silver Processing
+
+## Transactions
+
+Script:
+
+```text
+src/batch/trans_bronze_to_silver.py
+```
+
+Features:
+
+* Incremental processing
+* Watermark tracking
+* Data validation
+* Deduplication
+* Run history tracking
+
+Validation Rules:
+
+* transaction_id not null
+* customer_id not null
+* account_id not null
+* amount > 0
+
+---
+
+## Customers
+
+Script:
+
+```text
+src/batch/cust_bronze_to_silver.py
+```
+
+Features:
+
+* Incremental processing
+* Watermark tracking
+* Validation
+* Deduplication
+* Metadata logging
+
+Validation Rules:
+
+* customer_id not null
+* customer_name not null
+* email not null
+
+---
+
+# Incremental Processing
+
+Implemented using metadata-driven watermarking.
+
+Table:
+
+```sql
+pipeline_metadata
+```
 
 Example:
 
+| job_name                  | last_processed_timestamp |
+| ------------------------- | ------------------------ |
+| trans_bronze_to_silver    | 2026-06-21 10:00:00      |
+| cust_bronze_to_silver     | 2026-06-21 10:05:00      |
+| cust_silver_to_wh         | 2026-06-21 10:10:00      |
+
+Processing Logic:
+
 ```text
-banking-data-ap-south-1
-```
-
-Recommended structure:
-
-```text
-banking-data-ap-south-1/
-
-bronze/
-silver/
-gold/
-checkpoints/
-quarantine/
+Read Watermark
+        ↓
+Read Source
+        ↓
+Filter New Records
+        ↓
+Process Delta
+        ↓
+Update Watermark
 ```
 
 ---
 
-## Configure AWS CLI
+# Pipeline Observability
 
-Install:
+## Metadata Table
 
-```bash
-brew install awscli
+```sql
+pipeline_metadata
 ```
 
-Configure:
+Tracks:
+
+* Job name
+* Last processed timestamp
+* Job status
+
+---
+
+## Run History Table
+
+```sql
+pipeline_run_history
+```
+
+Tracks:
+
+* Run ID
+* Records Read
+* Records Written
+* Rejected Records
+* Duplicate Records
+* Status
+* Start Time
+* End Time
+
+---
+
+# Warehouse Layer
+
+PostgreSQL is used as the warehouse.
+
+---
+
+## Customer Staging Table
+
+```sql
+customer_silver_stg
+```
+
+Stores latest incremental customer batch.
+
+---
+
+## Customer Changes Table
+
+```sql
+customer_changes
+```
+
+Stores detected customer changes requiring SCD processing.
+
+---
+
+## Customer Dimension
+
+```sql
+customer_dim_data
+```
+
+Columns:
+
+```text
+customer_sk
+customer_id
+customer_name
+email
+phone
+city
+risk_rating
+effective_from
+effective_to
+is_current
+created_at
+```
+
+---
+
+# SCD Type 2 Implementation
+
+Script:
+
+```text
+src/batch/cust_silver_to_wh.py
+```
+
+Flow:
+
+```text
+Read Watermark
+        ↓
+
+Read Silver Incrementally
+        ↓
+
+Keep Latest Customer Update
+        ↓
+
+Load customer_silver_stg
+        ↓
+
+Detect Changes
+        ↓
+
+Expire Existing Records
+        ↓
+
+Insert New Version
+        ↓
+
+Update Watermark
+```
+
+---
+
+## Example
+
+### Initial Record
+
+| customer_id | city   | risk_rating | is_current |
+| ----------- | ------ | ----------- | ---------- |
+| CUST1001    | Mumbai | LOW         | TRUE       |
+
+---
+
+### Updated Record
+
+| customer_id | city | risk_rating |
+| ----------- | ---- | ----------- |
+| CUST1001    | Pune | MEDIUM      |
+
+---
+
+### Dimension Result
+
+| customer_sk | customer_id | city   | risk_rating | is_current |
+| ----------- | ----------- | ------ | ----------- | ---------- |
+| 1           | CUST1001    | Mumbai | LOW         | FALSE      |
+| 2           | CUST1001    | Pune   | MEDIUM      | TRUE       |
+
+---
+
+# Setup Instructions
+
+## Create Virtual Environment
+
+```bash
+python3 -m venv .venv
+
+source scripts/start_env.sh
+```
+
+---
+
+## Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## Configure AWS
 
 ```bash
 aws configure
@@ -161,9 +497,9 @@ aws s3 ls
 
 ---
 
-# Docker Setup
+# Docker Commands
 
-## Start Services
+Start services:
 
 ```bash
 docker compose up -d
@@ -175,28 +511,13 @@ Verify:
 docker ps
 ```
 
-Expected containers:
-
-```text
-kafka
-zookeeper
-postgres
-pgadmin
-```
-
----
-
-## Stop Services
+Stop services:
 
 ```bash
 docker compose down
 ```
 
----
-
-## Stop Services And Delete Volumes
-
-WARNING: Deletes Kafka/Postgres persisted data.
+Remove volumes:
 
 ```bash
 docker compose down -v
@@ -204,97 +525,23 @@ docker compose down -v
 
 ---
 
-# PostgreSQL Setup
+# Running the Project
 
-## Create Metadata Table
-
-```sql
-CREATE TABLE pipeline_metadata (
-    job_name VARCHAR(100) PRIMARY KEY,
-    last_processed_timestamp TIMESTAMP,
-    last_run_status VARCHAR(20),
-    updated_at TIMESTAMP
-);
-```
-
----
-
-## Insert Initial Watermark
-
-```sql
-INSERT INTO pipeline_metadata
-VALUES (
-    'bronze_to_silver',
-    '1900-01-01',
-    'SUCCESS',
-    CURRENT_TIMESTAMP
-);
-```
-
----
-
-## Create Run History Table
-
-```sql
-CREATE TABLE pipeline_run_history (
-    run_id UUID PRIMARY KEY,
-    job_name VARCHAR(100),
-    records_read BIGINT,
-    records_written BIGINT,
-    records_rejected BIGINT,
-    records_duplicates BIGINT,
-    start_time TIMESTAMP,
-    end_time TIMESTAMP,
-    status VARCHAR(20),
-    error_message TEXT
-);
-```
-
----
-
-# Kafka Setup
-
-## Create Topic
-
-```bash
-docker exec -it kafka bash
-```
-
-```bash
-kafka-topics \
---create \
---topic banking_transactions \
---bootstrap-server localhost:9092 \
---partitions 3 \
---replication-factor 1
-```
-
----
-
-## Verify Topic
-
-```bash
-kafka-topics \
---list \
---bootstrap-server localhost:9092
-```
-
----
-
-# Running The Producer
+## Start Kafka Producers
 
 ```bash
 python src/producer/banking_trans_producer.py
 ```
 
-Responsibilities:
-
-* Generate banking transactions
-* Publish transactions to Kafka
+```bash
+python src/producer/customer_update_producer.py
+```
 
 ---
 
-# Running Streaming Consumer
+## Start Streaming Jobs
+
+### Transactions
 
 ```bash
 spark-submit \
@@ -305,177 +552,100 @@ com.amazonaws:aws-java-sdk-bundle:1.12.262 \
 src/streaming/banking_trans_streaming.py
 ```
 
-Responsibilities:
+---
 
-* Consume Kafka stream
-* Parse JSON
-* Validate records
-* Write Parquet files to Bronze Layer
+### Customers
+
+```bash
+spark-submit \
+--packages \
+org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,\
+org.apache.hadoop:hadoop-aws:3.3.4,\
+com.amazonaws:aws-java-sdk-bundle:1.12.262 \
+src/streaming/customer_update_streaming.py
+```
 
 ---
 
-# Running Bronze To Silver Job
+## Run Bronze → Silver Jobs
 
 ```bash
 spark-submit \
 --packages \
 org.apache.hadoop:hadoop-aws:3.3.4,\
 com.amazonaws:aws-java-sdk-bundle:1.12.262 \
-src/batch/bronze_to_silver.py
+src/batch/trans_bronze_to_silver.py
 ```
-
-Responsibilities:
-
-* Read Bronze Layer
-* Incremental processing using watermark
-* Data quality validation
-* Deduplication
-* Write Silver Layer
-* Update metadata tables
-
----
-
-# S3 Data Layout
-
-## Bronze Layer
-
-```text
-bronze/
-└── transactions/
-    └── year=YYYY/
-        └── month=MM/
-            └── day=DD/
-```
-
----
-
-## Silver Layer
-
-```text
-silver/
-└── transactions/
-    └── year=YYYY/
-        └── month=MM/
-            └── day=DD/
-```
-
----
-
-# Incremental Processing Logic
-
-Watermark stored in:
-
-```text
-pipeline_metadata
-```
-
-Example:
-
-```text
-last_processed_timestamp
-```
-
-Workflow:
-
-```text
-Read Watermark
-       ↓
-Read Bronze
-       ↓
-Filter New Records
-       ↓
-Validate
-       ↓
-Deduplicate
-       ↓
-Write Silver
-       ↓
-Update Watermark
-```
-
----
-
-# Useful Commands
-
-## View PostgreSQL Logs
 
 ```bash
-docker logs postgres
+spark-submit \
+--packages \
+org.apache.hadoop:hadoop-aws:3.3.4,\
+com.amazonaws:aws-java-sdk-bundle:1.12.262 \
+src/batch/cust_bronze_to_silver.py
 ```
 
 ---
 
-## View Kafka Logs
+## Run Silver to Warehouse (SCD2) Job
 
 ```bash
-docker logs kafka
-```
-
----
-
-## Connect To PostgreSQL
-
-```bash
-docker exec -it postgres psql -U admin -d banking_platform
-```
-
----
-
-## Verify Watermark
-
-```sql
-SELECT *
-FROM pipeline_metadata;
-```
-
----
-
-## Verify Run History
-
-```sql
-SELECT *
-FROM pipeline_run_history
-ORDER BY start_time DESC;
+spark-submit \
+--packages \
+org.postgresql:postgresql:42.7.3,\
+org.apache.hadoop:hadoop-aws:3.3.4,\
+com.amazonaws:aws-java-sdk-bundle:1.12.262 \
+src/scd/cust_silver_to_wh.py
 ```
 
 ---
 
 # Future Enhancements
 
-## Phase 3
-
-Customer Master Stream
-
-* customer_updates Kafka topic
-* Customer Bronze Layer
-* Customer Silver Layer
-
-## Phase 4
-
-SCD Type 2
-
-* Historical customer tracking
-* Customer dimension table
-
 ## Phase 5
 
-Fraud Detection
+Fraud Detection Engine
 
 * High-value transactions
 * Velocity checks
-* Risk-based alerts
+* Geographic anomaly detection
+
+---
 
 ## Phase 6
 
 Apache Airflow
 
-* Pipeline orchestration
+* DAG orchestration
 * Scheduling
+* Dependency management
 * Monitoring
+
+---
 
 ## Phase 7
 
 Analytics Layer
 
-* PostgreSQL warehouse
-* Tableau dashboards
+* Gold tables
+* Aggregations
+* Customer KPIs
+
+---
+
+## Phase 8
+
+Visualization
+
+* Tableau Dashboard
+* Transaction Analytics
+* Customer Risk Dashboard
+
+---
+
+## Phase 9
+
+Infrastructure as Code
+
+* Terraform
+* Automated AWS provisioning
