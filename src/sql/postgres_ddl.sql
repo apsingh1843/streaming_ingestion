@@ -11,7 +11,15 @@ CREATE TABLE pipeline_metadata (
 
 INSERT INTO pipeline_metadata
 VALUES (
-    'bronze_to_silver',
+    'trans_bronze_to_silver',
+    '1900-01-01',
+    'SUCCESS',
+    CURRENT_TIMESTAMP
+);
+
+INSERT INTO pipeline_metadata
+VALUES (
+    'cust_bronze_to_silver',
     '1900-01-01',
     'SUCCESS',
     CURRENT_TIMESTAMP
@@ -42,3 +50,17 @@ FROM pipeline_metadata;
 SELECT *
 FROM pipeline_run_history
 ORDER BY start_time DESC;
+
+-- Create customer dimension
+
+CREATE TABLE customer_dim_data (
+    customer_sk SERIAL PRIMARY KEY,
+    customer_id VARCHAR(50),
+    customer_name VARCHAR(255),
+    email VARCHAR(255),
+    city VARCHAR(100),
+    risk_rating VARCHAR(20),
+    effective_from TIMESTAMP,
+    effective_to TIMESTAMP,
+    is_current BOOLEAN
+);
