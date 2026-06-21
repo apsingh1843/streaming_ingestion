@@ -1,6 +1,6 @@
 -- Create Metadata Table
 
-CREATE TABLE pipeline_metadata (
+CREATE TABLE IF NOT EXISTS pipeline_metadata (
     job_name VARCHAR(100) PRIMARY KEY,
     last_processed_timestamp TIMESTAMP,
     last_run_status VARCHAR(20),
@@ -15,7 +15,8 @@ VALUES (
     '1900-01-01',
     'SUCCESS',
     CURRENT_TIMESTAMP
-);
+)
+ON CONFLICT (job_name) DO NOTHING;
 
 INSERT INTO pipeline_metadata
 VALUES (
@@ -23,7 +24,8 @@ VALUES (
     '1900-01-01',
     'SUCCESS',
     CURRENT_TIMESTAMP
-);
+)
+ON CONFLICT (job_name) DO NOTHING;
 
 INSERT INTO pipeline_metadata
 VALUES (
@@ -31,11 +33,12 @@ VALUES (
     '1900-01-01',
     'SUCCESS',
     CURRENT_TIMESTAMP
-);
+)
+ON CONFLICT (job_name) DO NOTHING;
 
 -- Create Run History Table
 
-CREATE TABLE pipeline_run_history (
+CREATE TABLE IF NOT EXISTS pipeline_run_history (
     run_id UUID PRIMARY KEY,
     job_name VARCHAR(100),
     records_read BIGINT,
@@ -50,11 +53,8 @@ CREATE TABLE pipeline_run_history (
 
 -- Verify Watermark
 
-SELECT *
-FROM pipeline_metadata;
+--SELECT * FROM pipeline_metadata;
 
 -- Verify Run History
 
-SELECT *
-FROM pipeline_run_history
-ORDER BY start_time DESC;
+--SELECT * FROM pipeline_run_history ORDER BY start_time DESC;
