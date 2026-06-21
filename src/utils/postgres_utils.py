@@ -8,10 +8,19 @@ POSTGRES_CONFIG = {
     "password": "admin"
 }
 
+# Function to create and return a new PostgreSQL connection
+def get_postgres_connection():
+    try:
+        conn = psycopg2.connect(**POSTGRES_CONFIG)
+        return conn
+    except Exception as e:
+        print(f"Error connecting to PostgreSQL: {e}")
+        return None
+
 # Function to get the last processed timestamp from PostgreSQL
 def get_last_processed_timestamp(job_name):
     try:
-        conn = psycopg2.connect(**POSTGRES_CONFIG)
+        conn = get_postgres_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT last_processed_timestamp FROM pipeline_metadata WHERE job_name = %s;", (job_name,))
         result = cursor.fetchone()
@@ -28,7 +37,7 @@ def get_last_processed_timestamp(job_name):
 # Function to update the last processed timestamp (watermark) in PostgreSQL
 def update_last_processed_timestamp(max_timestamp, job_name):
     try:
-        conn = psycopg2.connect(**POSTGRES_CONFIG)
+        conn = get_postgres_connection()
         cursor = conn.cursor()
         cursor.execute("UPDATE pipeline_metadata SET last_processed_timestamp = %s, last_run_status = 'SUCCESS' WHERE job_name = %s;", (max_timestamp, job_name))
         conn.commit()
@@ -43,7 +52,7 @@ def update_last_processed_timestamp(max_timestamp, job_name):
 # Function to insert current status in run history table
 def insert_run_history(run_id, job_name, records_read, records_written, records_rejected, start_time, end_time, status, error_message=None):
     try:
-        conn = psycopg2.connect(**POSTGRES_CONFIG)
+        conn = get_postgres_connection()
         cursor = conn.cursor()
 
         cursor.execute("INSERT INTO pipeline_run_history (run_id, job_name, records_read, records_written, records_rejected, start_time, end_time, status, error_message) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);", (run_id, job_name, records_read, records_written, records_rejected, start_time, end_time, status, error_message))
@@ -56,3 +65,9 @@ def insert_run_history(run_id, job_name, records_read, records_written, records_
             cursor.close()
         if conn:
             conn.close()
+
+# Function to run SQL commands from a file
+def run_sql_file(cursor, file_path):
+    with open(file_path, 'r') as file:
+        sql_commands = file.read()
+        cursor.execute(sql_commands)
